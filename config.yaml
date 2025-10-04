@@ -1,0 +1,67 @@
+# ============================================================
+# Video Deepfake Detection Configuration - Model A
+# Author: Kishor-04
+# Date: 2025-10-04
+# ============================================================
+
+# Dataset Configuration
+dataset:
+  raw_data_path: "data/raw"
+  processed_data_path: "data/processed"
+  real_videos: "data/raw/real"
+  fake_videos: "data/raw/fake"
+  
+  # Split ratios (train:val:test = 70:15:15)
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  
+  # Frame extraction settings
+  frames_per_video: 30        # Extract 30 frames per video
+  frame_size: [224, 224]      # Frame dimensions
+  fps: 10                     # Extract 10 frames per second
+
+# Model Configuration
+model:
+  architecture: "efficientnet-b0"  # Options: xception, efficientnet-b0, efficientnet-b4
+  pretrained_weights: null         # null = use ImageNet weights (built-in, no download)
+  num_classes: 2                   # Binary classification: real vs fake
+  input_size: [224, 224]           # Input image size (299x299 for Xception)
+
+# Training Configuration
+training:
+  batch_size: 32
+  epochs: 20
+  learning_rate: 0.0001
+  weight_decay: 0.00001
+  optimizer: "adam"
+  
+  # Fine-tuning strategy
+  freeze_layers: true          # Freeze backbone initially
+  unfreeze_after_epoch: 5      # Unfreeze after 5 epochs
+  
+  # Checkpoints
+  checkpoint_dir: "models/checkpoints"
+  save_best_only: true
+  early_stopping_patience: 5
+
+# Data Augmentation Configuration
+augmentation:
+  enable: true
+  horizontal_flip: 0.5
+  rotation_range: 15
+  brightness_range: [0.8, 1.2]
+  zoom_range: 0.1
+  
+# Hardware Configuration
+hardware:
+  device: "cuda"               # cuda or cpu
+  num_workers: 4               # DataLoader workers
+  pin_memory: true             # Faster data transfer to GPU
+  
+# Inference Configuration
+inference:
+  batch_processing: true
+  real_time: false
+  confidence_threshold: 0.5    # Threshold for fake classification
+  output_path: "results/"

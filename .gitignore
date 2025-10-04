@@ -42,6 +42,7 @@ models/checkpoints/*.pt
 
 #pretrained model
 scripts/models/pretrained
+
 # Results
 results/*.png
 results/*.csv
