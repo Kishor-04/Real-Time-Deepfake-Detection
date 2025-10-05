@@ -24,7 +24,7 @@ dataset:
 # Model Configuration
 model:
   architecture: "efficientnet-b0"  # Options: xception, efficientnet-b0, efficientnet-b4
-  pretrained_weights: null         # null = use ImageNet weights (built-in, no download)
+  pretrained_weights: "models/pretrained/efficientnet_b7_deepfake.pth"     # null = use ImageNet weights (built-in, no download)
   num_classes: 2                   # Binary classification: real vs fake
   input_size: [224, 224]           # Input image size (299x299 for Xception)
 

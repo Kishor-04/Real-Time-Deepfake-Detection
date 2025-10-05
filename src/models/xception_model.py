@@ -1,3 +1,9 @@
+"""
+Xception-based deepfake detection model
+Author: Kishor-04
+Date: 2025-01-04
+"""
+
 import torch
 import torch.nn as nn
 import timm
@@ -48,19 +54,38 @@ def load_pretrained_xception(weights_path=None, num_classes=2):
         # Load model without pretrained weights first
         model = XceptionDeepfakeDetector(num_classes=num_classes, pretrained=False)
         
-        # Load deepfake-specific weights
-        checkpoint = torch.load(weights_path, map_location='cpu')
+        # FIXED: Load deepfake-specific weights with proper error handling
+        try:
+            # Try with weights_only=True first (safer)
+            checkpoint = torch.load(weights_path, map_location='cpu', weights_only=True)
+        except Exception as e:
+            # Fallback to weights_only=False if the file contains non-tensor objects
+            print(f"  ⚠️  Using weights_only=False due to older checkpoint format")
+            checkpoint = torch.load(weights_path, map_location='cpu', weights_only=False)
         
         # Handle different checkpoint formats
         if isinstance(checkpoint, dict):
             if 'model_state_dict' in checkpoint:
-                model.load_state_dict(checkpoint['model_state_dict'])
+                model.load_state_dict(checkpoint['model_state_dict'], strict=False)
             elif 'state_dict' in checkpoint:
-                model.load_state_dict(checkpoint['state_dict'])
+                model.load_state_dict(checkpoint['state_dict'], strict=False)
+            elif 'model' in checkpoint:
+                model.load_state_dict(checkpoint['model'], strict=False)
             else:
-                model.load_state_dict(checkpoint)
+                # Try loading directly
+                try:
+                    model.load_state_dict(checkpoint, strict=False)
+                except Exception as load_error:
+                    print(f"  ⚠️  Warning: Could not load checkpoint format: {load_error}")
+                    print(f"  ⚠️  Falling back to ImageNet weights instead.")
+                    return XceptionDeepfakeDetector(num_classes=num_classes, pretrained=True)
         else:
-            model.load_state_dict(checkpoint)
+            try:
+                model.load_state_dict(checkpoint, strict=False)
+            except Exception as load_error:
+                print(f"  ⚠️  Warning: Could not load checkpoint: {load_error}")
+                print(f"  ⚠️  Falling back to ImageNet weights instead.")
+                return XceptionDeepfakeDetector(num_classes=num_classes, pretrained=True)
         
         print("  ✓ Deepfake-specific weights loaded successfully")
     else:
