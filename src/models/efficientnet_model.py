@@ -25,10 +25,10 @@ class EfficientNetDeepfakeDetector(nn.Module):
         # Modify the final classification layer
         in_features = self.model._fc.in_features
         self.model._fc = nn.Sequential(
-            nn.Dropout(0.5),
+            nn.Dropout(0.2),  # Reduced from 0.5 to 0.2
             nn.Linear(in_features, 512),
             nn.ReLU(),
-            nn.Dropout(0.3),
+            nn.Dropout(0.1),  # Reduced from 0.3 to 0.1
             nn.Linear(512, num_classes)
         )
         

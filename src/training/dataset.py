@@ -1,7 +1,8 @@
 """
 Dataset and DataLoader creation for deepfake detection
 Author: Kishor-04
-Date: 2025-01-04
+Date: 2025-01-06
+UPDATED: Loads from train/val/test folder structure
 """
 
 import torch
@@ -9,8 +10,8 @@ from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
 import cv2
 import numpy as np
-from sklearn.model_selection import train_test_split
 import yaml
+import pickle
 
 class DeepfakeDataset(Dataset):
     """Dataset class for deepfake detection"""
@@ -27,11 +28,14 @@ class DeepfakeDataset(Dataset):
         img_path = self.image_paths[idx]
         label = self.labels[idx]
         
+        # Convert string path to Path object if needed
+        if isinstance(img_path, str):
+            img_path = Path(img_path)
+        
         # Load image
         image = cv2.imread(str(img_path))
         
         if image is None:
-            # If image loading fails, return a blank image
             print(f"Warning: Could not load {img_path}")
             image = np.zeros((224, 224, 3), dtype=np.uint8)
         
@@ -44,81 +48,39 @@ class DeepfakeDataset(Dataset):
         
         return image, label
 
-def prepare_data_splits(config_path='config.yaml'):
-    """Prepare train/val/test splits from processed faces"""
+def load_prepared_splits(config_path='config.yaml'):
+    """
+    Load pre-prepared train/val/test splits from disk
+    """
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
     
-    faces_dir = Path(config['dataset']['processed_data_path']) / 'faces'
+    splits_file = Path(config['dataset']['processed_data_path']) / 'splits' / 'data_splits.pkl'
     
-    if not faces_dir.exists():
-        raise FileNotFoundError(f"Faces directory not found: {faces_dir}")
+    if not splits_file.exists():
+        print(f"\n❌ Error: Pre-prepared splits not found at: {splits_file}")
+        print(f"\n💡 Please run dataset preparation first:")
+        print(f"   python main.py --mode prepare_dataset")
+        raise FileNotFoundError(f"Splits file not found: {splits_file}")
     
-    # Collect all image paths and labels
-    image_paths = []
-    labels = []
+    print(f"\n📂 Loading pre-prepared splits from: {splits_file}")
     
-    # Real images (label = 0)
-    real_dir = faces_dir / 'real'
-    if real_dir.exists():
-        for video_dir in real_dir.iterdir():
-            if video_dir.is_dir():
-                for img_path in video_dir.glob("*.jpg"):
-                    image_paths.append(img_path)
-                    labels.append(0)
+    with open(splits_file, 'rb') as f:
+        splits = pickle.load(f)
     
-    # Fake images (label = 1)
-    fake_dir = faces_dir / 'fake'
-    if fake_dir.exists():
-        for video_dir in fake_dir.iterdir():
-            if video_dir.is_dir():
-                for img_path in video_dir.glob("*.jpg"):
-                    image_paths.append(img_path)
-                    labels.append(1)
+    # Convert paths back to Path objects
+    for split_name in ['train', 'val', 'test']:
+        paths, labels = splits[split_name]
+        splits[split_name] = ([Path(p) for p in paths], labels)
     
-    if len(image_paths) == 0:
-        raise ValueError("No images found! Please run preprocessing first.")
+    print(f"  ✓ Loaded train split: {len(splits['train'][0]):,} frames")
+    print(f"  ✓ Loaded val split:   {len(splits['val'][0]):,} frames")
+    print(f"  ✓ Loaded test split:  {len(splits['test'][0]):,} frames")
     
-    print(f"\n📊 Dataset Statistics:")
-    print(f"  Real images: {labels.count(0):,}")
-    print(f"  Fake images: {labels.count(1):,}")
-    print(f"  Total images: {len(labels):,}")
-    
-    # Split data
-    train_ratio = config['dataset']['train_ratio']
-    val_ratio = config['dataset']['val_ratio']
-    test_ratio = config['dataset']['test_ratio']
-    
-    # First split: train + (val + test)
-    X_train, X_temp, y_train, y_temp = train_test_split(
-        image_paths, labels,
-        test_size=(val_ratio + test_ratio),
-        random_state=42,
-        stratify=labels
-    )
-    
-    # Second split: val + test
-    val_size = val_ratio / (val_ratio + test_ratio)
-    X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp,
-        test_size=(1 - val_size),
-        random_state=42,
-        stratify=y_temp
-    )
-    
-    print(f"\n📋 Data Splits:")
-    print(f"  Train: {len(X_train):,} images ({len(X_train)/len(labels)*100:.1f}%)")
-    print(f"  Val:   {len(X_val):,} images ({len(X_val)/len(labels)*100:.1f}%)")
-    print(f"  Test:  {len(X_test):,} images ({len(X_test)/len(labels)*100:.1f}%)")
-    
-    return {
-        'train': (X_train, y_train),
-        'val': (X_val, y_val),
-        'test': (X_test, y_test)
-    }
+    return splits
 
 def create_data_loaders(config_path='config.yaml'):
-    """Create DataLoaders for training"""
+    """Create DataLoaders for training from pre-prepared splits"""
     import sys
     sys.path.append('.')
     from src.preprocessing.data_augmentation import get_train_transforms, get_val_transforms
@@ -126,8 +88,8 @@ def create_data_loaders(config_path='config.yaml'):
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
     
-    # Prepare splits
-    data_splits = prepare_data_splits(config_path)
+    # Load pre-prepared splits
+    data_splits = load_prepared_splits(config_path)
     
     # Create datasets
     train_dataset = DeepfakeDataset(

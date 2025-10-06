@@ -66,16 +66,19 @@ python main.py --mode all
 ### Run Individual Steps
 
 ```bash
-# Step 1: Preprocess data (extract frames and faces)
+# Step 1: Extract frames and faces (one-time, slow)
 python main.py --mode preprocess
 
-# Step 2: Train model
+# Step 2: Prepare dataset (randomize + split) (one-time, fast)
+python main.py --mode prepare_dataset
+
+# Step 3: Train model (can repeat with different configs)
 python main.py --mode train
 
-# Step 3: Evaluate model
+# Step 4: Evaluate model
 python main.py --mode evaluate
 
-# Step 4: Inference on new videos
+# Step 5: Inference on new videos
 python main.py --mode inference --video path/to/video.mp4
 python main.py --mode inference --batch path/to/videos/
 ```
@@ -114,9 +117,19 @@ Real-Time-Deepfake-Detection/
 │       ├── frames/
 │       │   ├── real/
 │       │   └── fake/
-│       └── faces/
-│           ├── real/
-│           └── fake/
+│       ├── faces/
+│       │   ├── real/
+│       │   │   ├── 0/             
+│       │   │   ├── 1/
+│       │   │   └── ...
+│       │   ├── fake/
+│       │   │   ├── 0/
+│       │   │   └── ...
+│       │   ├── real_folder_mapping.txt 
+│       │   └── fake_folder_mapping.txt  
+│       │
+│       └── splits/                
+│           └── data_splits.pkl    
 │
 ├── models/
 │   ├── pretrained/            # Pre-trained weights (optional)
